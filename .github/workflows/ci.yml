@@ -1,0 +1,61 @@
+name: DevOps CI Pipeline
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  # JOB 1: Static Analysis (HTMLHint and Stylelint)
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4[cite: 1]
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: HTMLHint
+        run: npx htmlhint "src/*.html"[cite: 1]
+
+      - name: Stylelint
+        run: npx stylelint "styles/*.css"[cite: 1]
+
+  # JOB 2: Build Website using Parcel
+  build:
+    needs: linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4[cite: 1]
+
+      - name: Build with Parcel
+        run: npx parcel build src/index.html --dist-dir dist[cite: 1]
+
+  # JOB 3: Build & Push Docker Image
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4[cite: 1]
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/uni-notice-board:latest[cite: 1]
